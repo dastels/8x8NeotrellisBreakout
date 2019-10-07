@@ -11,6 +11,7 @@ from game_board import Board
 
 import adafruit_logging as logging
 logger = logging.getLogger('breakout')
+#logger.setLevel(logging.INFO)
 
 encoder = rotaryio.IncrementalEncoder(D11, D12)
 last_position = encoder.position
@@ -48,10 +49,10 @@ while not board.is_game_over:
 
     while board.is_still_in_play:
 
-        # logger.debug('Pausing')
-        # button.update()
-        # while not button.fell:
-        #     button.update()
+        button.update()
+        while not button.fell:
+            button.update()
+
 
         position = encoder.position
         if position == last_position:

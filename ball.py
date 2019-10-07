@@ -4,6 +4,9 @@ from rectangle import Rectangle
 from coordinate import Coordinate
 from vector import Vector
 
+import adafruit_logging as logging
+logger = logging.getLogger('breakout')
+
 BALL_SIZE = 8
 COLLISION_MARGIN = 1
 
@@ -13,16 +16,17 @@ class Ball(object):
         self._board = board
         self._collision_bounding_box = Rectangle(0, 0, 0, 0)
         if x is None:
-            self._position  = Coordinate(board.paddle_x + (board.paddle_width // 2) - (BALL_SIZE // 2), board.scale * 2)
-            self._velocity = Vector(pi / 8, board.scale)
+            self._position  = Coordinate(board.paddle_x + (board.paddle_width // 2) - (BALL_SIZE // 2), board.scale * 3 - 1)
+            self._velocity = Vector((pi / 4) + random() * (pi / 8) - pi / 16, board.scale/2)
         else:
             self._position = Coordinate(x, y)
             self._velocity = initial_velocity
+        logger.debug('Creating ball position: %s, velocity: %s', self._position, self._velocity)
 
     def update_bounding_box(self):
-        self._collision_bounding_box = Rectangle(self._position.y + COLLISION_MARGIN,
+        self._collision_bounding_box = Rectangle(self._position.y - COLLISION_MARGIN,
                                                  self.position.x + COLLISION_MARGIN,
-                                                 self.position.y + (BALL_SIZE - 1) - COLLISION_MARGIN,
+                                                 self.position.y - (BALL_SIZE - 1) + COLLISION_MARGIN,
                                                  self._position.x + (BALL_SIZE - 1) - COLLISION_MARGIN)
 
     @property

@@ -1,3 +1,4 @@
+import math
 from cells import create_block_cell, EmptyCell, TopWallCell, SideWallCell, PaddleCell, OutOfBoundsCell, BallCell
 from levels import levels
 from ball import Ball
@@ -71,11 +72,18 @@ class Board(object):
     def cells(self):
         return self._cells
 
-    def cell_at(self, x_or_coordinate, y=None):
+    def cell_at(self, x_or_coordinate, y=None, value=None):
         if isinstance(x_or_coordinate, int):
-            return self._cells[x_or_coordinate][y]
+            x = x_or_coordinate
         else:
-            return self._cells[x_or_coordinate.x][x_or_coordinate.y]
+            x = x_or_coordinate.x
+            y = x_or_coordinate.y
+        previous_value = self._cells[x][y]
+        if value is not None:
+            self._cells[x][y] = value
+            if x == 1 and y == 7 and value.label == 'P' :
+                raise Exception('', '')
+        return previous_value
 
     def _add_border(self):
         """Add wall cels along the top and sides"""
@@ -83,16 +91,16 @@ class Board(object):
         left = SideWallCell(self, False)
         right = SideWallCell(self, True)
         for col in range(self._columns):
-            self._cells[col][self._rows - 1] = top
+            self.cell_at(col, self._rows - 1, top)
         for row in range(self._rows):
-            self._cells[0][row] = left
-            self._cells[self._columns - 1][row] = right
+            self.cell_at(0, row, left)
+            self.cell_at(self._columns - 1, row, right)
 
     def _add_out_of_bounds(self):
         """Add a row of out of bounds cells along the bottom"""
         cell = OutOfBoundsCell(self)
         for x in range(self._columns):
-            self._cells[x][0] = cell
+            self.cell_at(x, 0, cell)
 
 
     def add_blocks(self):
@@ -108,15 +116,14 @@ class Board(object):
             data_index += 1
             for col in range(1, self._columns - 1):
                 # print('    Col: {0}'.format(col))
-                self._cells[col][row] = create_block_cell(self, line[col - 1], row, col)
+                self.cell_at(col, row, create_block_cell(self, line[col - 1], row, col))
 
     def update_paddle(self):
         for x in range(1, self._columns - 1):
-            self._cells[x][1] = EmptyCell()
+            self.cell_at(x, 1, EmptyCell())
         x = self._paddle.position.x // self._scale
         for offset in range(self._paddle.width // self._scale):
-            logger.debug('Paddle at: %d', int(x + offset + 1))
-            self._cells[int(x + offset)][1] = PaddleCell(self, self._paddle)
+            self.cell_at(int(x + offset), 1, PaddleCell(self, self._paddle))
 
     def clear_level(self):
         pass
@@ -125,12 +132,20 @@ class Board(object):
         pass
 
     def process_ball(self, ball):
+        logger.debug('Processing ball')
         self.check_for_and_handle_collision(ball)
 
     def check_for_and_handle_collision(self, ball):
-        self.check_for_and_handle_ball_collision(ball)
-        if not self.check_for_and_handle_non_corner_collision(ball):
-            self.check_for_and_handle_corner_collision(ball)
+        if self.check_for_and_handle_ball_collision(ball):
+            logger.debug('Ball collision')
+            return True
+        if self.check_for_and_handle_non_corner_collision(ball):
+            logger.debug('Non corner collision')
+            return True
+        if self.check_for_and_handle_corner_collision(ball):
+            logger.debug('Corner collision')
+            return True
+        return False
 
     def check_for_and_handle_ball_collision(self, ball1):
         for ball_number in range(MAX_BALLS_IN_PLAY):
@@ -163,23 +178,31 @@ class Board(object):
         if ball.is_heading_primarily_up:
             if ball.is_heading_left:
                 self.vertical_hit(self.cell_at(top, left), ball)
+                return True
             if ball.is_heading_right:
                 self.vertical_hit(self.cell_at(top, right), ball)
+                return True
         if ball.is_heading_primarily_down:
             if ball.is_heading_left:
                 self.vertical_hit(self.cell_at(bottom, left), ball)
+                return True
             if ball.is_heading_right:
                 self.vertical_hit(self.cell_at(bottom, right), ball)
+                return True
         if ball.is_heading_primarily_left:
             if ball.is_heading_up:
                 self.horizontal_hit(self.cell_at(top, left), ball)
+                return True
             if ball.is_heading_down:
                 self.horizontal_hit(self.cell_at(bottom, left), ball)
+                return True
         if ball.is_heading_primarily_right:
             if ball.is_heading_up:
                 self.horizontal_hit(self.cell_at(top, right), ball)
+                return True
             if ball.is_heading_down:
                 self.horizontal_hit(self.cell_at(bottom, right), ball)
+                return True
 
         return False
 
@@ -257,6 +280,7 @@ class Board(object):
         return True
 
     def went_out_of_bounds(self, ball):
+        logger.debug('Out of bounds')
         for ball_number in range(MAX_BALLS_IN_PLAY):
             if self._balls[ball_number] is None:
                 continue
@@ -281,20 +305,25 @@ class Board(object):
             self._balls[i] = None
 
     def remove_block(self, cell):
-        self._cells[cell.row][cell.column] = EmptyCell()
+        self.cell_at(cell.row, cell.column, EmptyCell())
 
 
     def move_balls(self):
         for ball in self._balls:
             if ball is None:
                 continue
+            old_raw_position = ball.position
             old_position = self.convert_to_tile_position(ball.position)
-            ball_cell = self._cells[old_position.x][old_position.y]
-            self._cells[old_position.y][old_position.x] = EmptyCell()
+            ball_cell = self.cell_at(old_position.x, old_position.y)
+            self.cell_at(old_position.y, old_position.x,  EmptyCell())
             ball.move()
+            new_raw_position = ball.position
+            if math.fabs(old_raw_position.x - new_raw_position.x) > 0.1 or math.fabs(old_raw_position.y - new_raw_position.y) > 0.1:
+                logger.debug('Moving ball from %s', old_raw_position)
+                logger.debug('Moving ball to %s', new_raw_position)
+            logger.debug('Ball at %s', new_raw_position)
             new_position = self.convert_to_tile_position(ball.position)
-            self._cells[new_position.y][new_position.x] = ball_cell
-            logger.debug('Ball x: %d, y: %d', new_position.x, new_position.y)
+            self.cell_at(new_position.y, new_position.x, ball_cell)
 
 
     def launch(self):
@@ -311,7 +340,7 @@ class Board(object):
                 self._balls[ball_number] = ball
                 ball_position = self.convert_to_tile_position(ball.position)
                 logger.debug('Ball x: %d, y: %d', ball_position.x, ball_position.y)
-                self._cells[ball_position.x][ball_position.y] = BallCell(self, ball_position.y, ball_position.x)
+                self.cell_at(ball_position.x, ball_position.y, BallCell(self, ball_position.y, ball_position.x))
                 self._number_of_balls += 1
                 return
 
@@ -326,5 +355,5 @@ class Board(object):
         for row in range(self._rows-1, -1, -1):
             buf = ''
             for col in range(self._columns):
-                buf = buf + self._cells[col][row].label
-            logger.debug('Row %d: %s', row, buf)
+                buf = buf + self.cell_at(col, row).label
+            logger.info('Row %d: %s', row, buf)

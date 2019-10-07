@@ -33,8 +33,7 @@ class Adapter(object):
 
 
     def update(self, board):
-        cells = board.cells
         for x in range(8):
             for y in range(8):
                 #print('{0} {1}: {2} '.format(row, col, cells[row + 1][col + 1].color))
-                self._trellis.color(x, y, cells[8 - x][y + 1].color)
+                self._trellis.color(x, y, board.cell_at(8 - x, y + 1).color)

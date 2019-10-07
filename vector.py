@@ -1,5 +1,8 @@
 from math import sin, cos, atan2, sqrt, fabs, pi
 
+import adafruit_logging as logging
+logger = logging.getLogger('breakout')
+
 class Vector (object):
 
     def __init__(self, angle, magnitude):
@@ -7,7 +10,7 @@ class Vector (object):
         self._magnitude = magnitude
 
     def __str__(self):
-        return "a: {0:6.4f}, s: {1:4.2f}".format(self._angle, self._magnitude)
+        return "Vector(a: {0:6.4f} pi, s: {1:4.2f})".format(self._angle / pi, self._magnitude)
 
     @property
     def x(self):
@@ -36,6 +39,7 @@ class Vector (object):
         return int((self._angle * 163)) >> 1
 
     def __iadd__(self, o):
+        logger.debug('Vector +=')
         cx = self.x + o.x
         cy = self.y + o.y
         self.angle = atan2(cy, cx)
@@ -43,6 +47,7 @@ class Vector (object):
         return self
 
     def __add__(self, o):
+        logger.debug('Vector +')
         s = Vector(self._angle, self._magnitude)
         s += o
         return s
